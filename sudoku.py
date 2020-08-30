@@ -1,10 +1,7 @@
-import csv
-import itertools
 import sys
 import numpy
 import termcolor
 import time
-import copy
 from operator import itemgetter
 
 
@@ -26,17 +23,17 @@ def print_board(board, cells):
             print()
 
 
-def find_neighbores(cell, CONSTRAINTS):
+def find_neighbors(cell, CONSTRAINTS):
     """Find all neighboring cells to cell (for sudoku that is all neighbors that it cannot be the same as)"""
-    neighbores = []
+    neighbors = []
     for x, y in CONSTRAINTS:
         if x == cell:
-            if not y in neighbores:
-                neighbores.append(y)
+            if not y in neighbors:
+                neighbors.append(y)
         if y == cell:
-            if not x in neighbores:
-                neighbores.append(x)
-    return neighbores
+            if not x in neighbors:
+                neighbors.append(x)
+    return neighbors
 
 
 def select_unassigned_variable(assignment, domains, CONSTRAINTS):
@@ -85,19 +82,24 @@ def revise(x, y, domains):
     return revised
 
 
-def inference(assignment, var, domains, CONSTRAINTS):
+def inference(var, domains, CONSTRAINTS):
     """AC3 algorithm to find inferences from an assignment"""
     queue = []
-    for a, b in CONSTRAINTS:
-        if a is var:
-            queue.append((a, b))
+    if var != None:
+        for a, b in CONSTRAINTS:
+            if a is var:
+                queue.append((a, b))
+    else:
+        for a, b in CONSTRAINTS:
+            if len(domains[a]) > 0:
+                queue.append((a, b))
     while (len(queue) != 0):
         (x, y) = queue.pop(0)
         if revise(x, y, domains):
             if len(domains[x]) == 0:
                 return False
-            neighbores = find_neighbores(x, CONSTRAINTS)
-            for n in neighbores:
+            neighbors = find_neighbors(x, CONSTRAINTS)
+            for n in neighbors:
                 if n != y:
                     queue.append((n, x))
     return True
@@ -106,10 +108,10 @@ def inference(assignment, var, domains, CONSTRAINTS):
 def order_domain_values(var, domains, assignment, CONSTRAINTS):
     """Order domain values for variable depending on how many neighboring variables it will effect"""
     s = []
-    neighbores = find_neighbores(var, CONSTRAINTS)
+    neighbors = find_neighbors(var, CONSTRAINTS)
     for n in domains[var]:
         count = 0
-        for v in neighbores:
+        for v in neighbors:
             if assignment[v[0]][v[1]] > 0:
                 continue
             for i in domains[v]:
@@ -126,21 +128,12 @@ def order_domain_values(var, domains, assignment, CONSTRAINTS):
     return output
 
 
-# Function to create a progress bar
-def printProgressBar(iteration, total, decimals=0, length=9, fill='█', printEnd="\r", cell=''):
-    """Print progres bar for sudoku solver"""
-    number = ("{0:." + str(decimals) + "f}").format(iteration)
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print(
-        f'\rSolving Sudoku with Backtracking Search: |{bar}| Trying {number} in cell {cell} ', end=printEnd)
-
-
 def backtrack(assignment, domains, CONSTRAINTS, cells):
     """Runs backtracking search to find an assignment."""
-    print("\033[1B")
+    # Print board has it completes
     print_board(assignment, cells)
-    print("\033[12A")
+    print("\033[9A")
+
     # Check if assignment is complete
     cells_check = 0
     for i in range(9):
@@ -154,17 +147,15 @@ def backtrack(assignment, domains, CONSTRAINTS, cells):
     var = select_unassigned_variable(assignment, domains, CONSTRAINTS)
     values = order_domain_values(var, domains, assignment, CONSTRAINTS)
     for val in values:
-        printProgressBar(val, 10, cell=var)
         new_assignment = assignment.copy()
         new_assignment[var[0]][var[1]] = val
         if consistent(new_assignment, CONSTRAINTS):
             new_domains = domains.copy()
             new_domains[var] = set()
-            if inference(new_assignment, var, new_domains, CONSTRAINTS):
+            if inference(var, new_domains, CONSTRAINTS):
                 for cell in new_domains:
                     if len(new_domains[cell]) == 1:
-                        for n in new_domains[cell]:
-                            new_assignment[cell[0]][cell[1]] = n
+                        new_assignment[cell[0]][cell[1]] = new_domains[cell].pop()
             result = backtrack(new_assignment, new_domains, CONSTRAINTS, cells)
             if result is not None:
                 return result
@@ -177,6 +168,9 @@ def main():
     # Check for proper usage
     if len(sys.argv) != 2:
         sys.exit("Usage: python sudoku.py puzzle.csv")
+
+    # Print solving has started
+    print("Solving Sudoku:")
 
     # Load data
     puzzle = numpy.genfromtxt(
@@ -221,32 +215,26 @@ def main():
             if (i, j) in cells:
                 c = (i, j)
                 new_set = set([1, 2, 3, 4, 5, 6, 7, 8, 9])
-                neighbores = find_neighbores(c, CONSTRAINTS)
+                neighbors = find_neighbors(c, CONSTRAINTS)
                 for x in range(1, 10):
-                    for n in neighbores:
+                    for n in neighbors:
                         if puzzle[n[0]][n[1]] == x:
                             new_set.discard(x)
                 if len(new_set) == 1:
-                    for num in new_set:
-                        puzzle[i][j] = num
-                        cellDomains[c] = set()
-                        continue
+                    puzzle[i][j] = new_set.pop()
                 cellDomains[c] = new_set
             else:
-                val = puzzle[i][j]
                 cellDomains[(i, j)] = set()
 
-    # Set up progress bar
-    printProgressBar(0, 10)
-
-    # find the solution
+    # Find solution and time it
     start = time.time()
     solution = backtrack(puzzle, cellDomains, CONSTRAINTS, cells)
     end = time.time()
 
     # Print how long it took
-    print("\033[11B")
-    print("Took %f s" % ((end - start)))
+    print("\033[8B")
+    s = round((end - start), 2)
+    print(f"Took {s} s")
 
 
 if __name__ == "__main__":
