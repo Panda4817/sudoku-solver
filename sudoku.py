@@ -2,24 +2,29 @@ import sys
 import numpy
 import termcolor
 import time
+import math
 from operator import itemgetter
 
 
-def print_board(board, cells):
+def print_board(board, cells, hw):
     """Print the sudoku board"""
-    for j in range(9):
-        for i in range(9):
+    if hw > 9:
+        space = '   '
+    else:
+        space = ' '
+    for j in range(hw):
+        for i in range(hw):
             if (j, i) in cells:
                 if board[j][i] > 0:
                     termcolor.cprint(board[j][i], "blue", end="")
-                    print(' ', end="")
+                    print(space, end="")
                 else:
                     termcolor.cprint(board[j][i], "red", end="")
-                    print(' ', end="")
+                    print(space, end="")
             else:
                 termcolor.cprint(board[j][i], "green", end="")
-                print(' ', end="")
-        if j < 8:
+                print(space, end="")
+        if j < hw - 1:
             print()
 
 
@@ -36,10 +41,10 @@ def find_neighbors(cell, CONSTRAINTS):
     return neighbors
 
 
-def select_unassigned_variable(assignment, domains, CONSTRAINTS):
+def select_unassigned_variable(assignment, domains, CONSTRAINTS, hw):
     """Chooses a variable that has the least domains left"""
     for cell in domains:
-        for i in range(1, 10):
+        for i in range(1, hw + 1):
             if len(domains[cell]) == i:
                 return cell
     return None
@@ -128,23 +133,23 @@ def order_domain_values(var, domains, assignment, CONSTRAINTS):
     return output
 
 
-def backtrack(assignment, domains, CONSTRAINTS, cells):
+def backtrack(assignment, domains, CONSTRAINTS, cells, hw):
     """Runs backtracking search to find an assignment."""
     # Print board has it completes
-    print_board(assignment, cells)
-    print("\033[9A")
+    print_board(assignment, cells, hw)
+    print(f"\033[{hw}A")
 
     # Check if assignment is complete
     cells_check = 0
-    for i in range(9):
-        for j in range(9):
+    for i in range(hw):
+        for j in range(hw):
             if assignment[i][j] > 0:
                 cells_check += 1
-    if cells_check == 81:
+    if cells_check == (hw * hw):
         return assignment
 
     # Try a new variable
-    var = select_unassigned_variable(assignment, domains, CONSTRAINTS)
+    var = select_unassigned_variable(assignment, domains, CONSTRAINTS, hw)
     values = order_domain_values(var, domains, assignment, CONSTRAINTS)
     for val in values:
         new_assignment = assignment.copy()
@@ -156,39 +161,41 @@ def backtrack(assignment, domains, CONSTRAINTS, cells):
                 for cell in new_domains:
                     if len(new_domains[cell]) == 1:
                         new_assignment[cell[0]][cell[1]] = new_domains[cell].pop()
-            result = backtrack(new_assignment, new_domains, CONSTRAINTS, cells)
+            result = backtrack(new_assignment, new_domains, CONSTRAINTS, cells, hw)
             if result is not None:
                 return result
 
     return None
 
 
-def main():
-
-    # Check for proper usage
-    if len(sys.argv) != 2:
-        sys.exit("Usage: python sudoku.py puzzle.csv")
-
-    # Print solving has started
-    print("Solving Sudoku:")
-
-    # Load data
-    puzzle = numpy.genfromtxt(
-        sys.argv[1], delimiter=',', filling_values=0, dtype=int)
-
-    # Arcs are the puzzle board cells that need filling
+def arcs(board, hw):
+    """Get a list of cells that need filling"""
     cells = []
-    for j in range(9):
-        for i in range(9):
-            if puzzle[j][i] == 0:
+    for j in range(hw):
+        for i in range(hw):
+            if board[j][i] == 0:
                 cells.append((j, i))
+    return cells
 
-    # Constraints for Sudoku game
+def find_constraints(board, hw):
+    """Get all the constraints for a particular sudoku board"""
     CONSTRAINTS = []
-    for i in range(9):
-        for j in range(9):
+    h = 0
+    w = 0
+    num = math.sqrt(hw)
+    if num.is_integer():
+        h = int(num)
+        w = int(num)
+    elif hw == 6:
+        h = 2
+        w = 3
+    else:
+        return TypeError
+
+    for i in range(hw):
+        for j in range(hw):
             start = (i, j)
-            for n in range(9):
+            for n in range(hw):
                 if start != (i, n):
                     intermediate_row = (start, (i, n))
                     CONSTRAINTS.append(intermediate_row)
@@ -196,43 +203,80 @@ def main():
                     intermediate_col = (start, (n, j))
                     CONSTRAINTS.append(intermediate_col)
 
-    for row in range(0, 9, 3):
-        for col in range(0, 9, 3):
-            for j in range(row, row + 3):
-                for i in range(col, col + 3):
+    for row in range(0, hw, h):
+        for col in range(0, hw, w):
+            for j in range(row, row + h):
+                for i in range(col, col + w):
                     start = (j, i)
-                    for r in range(row, row + 3):
-                        for c in range(col, col + 3):
+                    for r in range(row, row + h):
+                        for c in range(col, col + w):
                             if (r, c) != start:
                                 intermediate = (start, (r, c))
                                 CONSTRAINTS.append(intermediate)
+    return CONSTRAINTS
 
-    # Domains are the numbers that could fill each cell
-    # Some domains are empty to show the cell is already filled with a number
+def fill_domains(board, hw, cells, CONSTRAINTS):
+    """Get a dictionary mapping cells to domains. 
+    Cells that don't need filling have empty domains."""
     cellDomains = {}
-    for i in range(9):
-        for j in range(9):
+    for i in range(hw):
+        for j in range(hw):
             if (i, j) in cells:
                 c = (i, j)
-                new_set = set([1, 2, 3, 4, 5, 6, 7, 8, 9])
+                new_set = set()
+                for num in range (1, hw + 1):
+                    new_set.add(num)
                 neighbors = find_neighbors(c, CONSTRAINTS)
-                for x in range(1, 10):
+                for x in range(1, hw + 1):
                     for n in neighbors:
-                        if puzzle[n[0]][n[1]] == x:
+                        if board[n[0]][n[1]] == x:
                             new_set.discard(x)
                 if len(new_set) == 1:
-                    puzzle[i][j] = new_set.pop()
+                    board[i][j] = new_set.pop()
                 cellDomains[c] = new_set
             else:
                 cellDomains[(i, j)] = set()
+    return cellDomains
+
+def main():
+
+    # Check for proper usage
+    if len(sys.argv) != 2:
+        sys.exit("Usage: python sudoku.py puzzle.csv")
+
+    # Print loading when board variables are being loaded
+    print("Loading board...")
+
+    # Load data
+    puzzle = numpy.genfromtxt(
+        sys.argv[1], delimiter=',', filling_values=0, dtype=int)
+
+    # Height and width
+    hw = len(puzzle)
+
+    # Arcs are the puzzle board cells that need filling
+    cells = arcs(puzzle, hw)
+
+    # Constraints for Sudoku game
+    CONSTRAINTS = find_constraints(puzzle, hw)
+    if CONSTRAINTS == TypeError:
+        sys.exit("Not valid board. Try 6x6, 9x9, 16x16 etc.")
+
+    # Print loading when board variables are being loaded
+    print("Solving Sudoku:")
+
+    # Domains are the numbers that could fill each cell
+    # Some domains are empty to show the cell is already filled with a number
+    cellDomains = fill_domains(puzzle, hw, cells, CONSTRAINTS)
 
     # Find solution and time it
     start = time.time()
-    solution = backtrack(puzzle, cellDomains, CONSTRAINTS, cells)
+    solution = backtrack(puzzle, cellDomains, CONSTRAINTS, cells, hw)
     end = time.time()
 
     # Print how long it took
-    print("\033[8B")
+    down = hw - 1
+    print(f"\033[{down}B")
     s = round((end - start), 2)
     print(f"Took {s} s")
 
