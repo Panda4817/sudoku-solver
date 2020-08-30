@@ -7,6 +7,7 @@ import time
 import copy
 from operator import itemgetter
 
+
 def print_board(board, cells):
     """Print the sudoku board"""
     for j in range(9):
@@ -24,6 +25,7 @@ def print_board(board, cells):
         if j < 8:
             print()
 
+
 def find_neighbores(cell, CONSTRAINTS):
     """Find all neighboring cells to cell (for sudoku that is all neighbors that it cannot be the same as)"""
     neighbores = []
@@ -36,6 +38,7 @@ def find_neighbores(cell, CONSTRAINTS):
                 neighbores.append(x)
     return neighbores
 
+
 def select_unassigned_variable(assignment, domains, CONSTRAINTS):
     """Chooses a variable that has the least domains left"""
     for cell in domains:
@@ -43,6 +46,7 @@ def select_unassigned_variable(assignment, domains, CONSTRAINTS):
             if len(domains[cell]) == i:
                 return cell
     return None
+
 
 def consistent(assignment, CONSTRAINTS):
     """Checks to see if an assignment is consistent."""
@@ -58,6 +62,7 @@ def consistent(assignment, CONSTRAINTS):
 
     # If nothing inconsistent, then assignment is consistent
     return True
+
 
 def revise(x, y, domains):
     """Check if domains need to be modified when making variable x arc consistent with variable y"""
@@ -78,12 +83,12 @@ def revise(x, y, domains):
     if revised:
         domains[x] = new_set
     return revised
-    
-               
+
+
 def inference(assignment, var, domains, CONSTRAINTS):
     """AC3 algorithm to find inferences from an assignment"""
     queue = []
-    for  a, b in CONSTRAINTS:
+    for a, b in CONSTRAINTS:
         if a is var:
             queue.append((a, b))
     while (len(queue) != 0):
@@ -96,6 +101,7 @@ def inference(assignment, var, domains, CONSTRAINTS):
                 if n != y:
                     queue.append((n, x))
     return True
+
 
 def order_domain_values(var, domains, assignment, CONSTRAINTS):
     """Order domain values for variable depending on how many neighboring variables it will effect"""
@@ -110,8 +116,8 @@ def order_domain_values(var, domains, assignment, CONSTRAINTS):
                 if n == i:
                     count += 1
         s.append((n, count))
-    
-    sorted_s =  sorted(s, key=itemgetter(1))
+
+    sorted_s = sorted(s, key=itemgetter(1))
     # Loop over sorted list and create new list of only values
     output = []
     for val in sorted_s:
@@ -121,12 +127,14 @@ def order_domain_values(var, domains, assignment, CONSTRAINTS):
 
 
 # Function to create a progress bar
-def printProgressBar (iteration, total, decimals = 0, length = 9, fill = '█', printEnd = "\r", cell=''):
+def printProgressBar(iteration, total, decimals=0, length=9, fill='█', printEnd="\r", cell=''):
     """Print progres bar for sudoku solver"""
     number = ("{0:." + str(decimals) + "f}").format(iteration)
     filledLength = int(length * iteration // total)
     bar = fill * filledLength + '-' * (length - filledLength)
-    print(f'\rSolving Sudoku with Backtracking Search: |{bar}| Trying {number} in cell {cell} ', end = printEnd)
+    print(
+        f'\rSolving Sudoku with Backtracking Search: |{bar}| Trying {number} in cell {cell} ', end=printEnd)
+
 
 def backtrack(assignment, domains, CONSTRAINTS, cells):
     """Runs backtracking search to find an assignment."""
@@ -160,8 +168,9 @@ def backtrack(assignment, domains, CONSTRAINTS, cells):
             result = backtrack(new_assignment, new_domains, CONSTRAINTS, cells)
             if result is not None:
                 return result
-        
+
     return None
+
 
 def main():
 
@@ -170,7 +179,8 @@ def main():
         sys.exit("Usage: python sudoku.py puzzle.csv")
 
     # Load data
-    puzzle = numpy.genfromtxt(sys.argv[1], delimiter=',', filling_values=0, dtype=int)
+    puzzle = numpy.genfromtxt(
+        sys.argv[1], delimiter=',', filling_values=0, dtype=int)
 
     # Arcs are the puzzle board cells that need filling
     cells = []
@@ -202,7 +212,7 @@ def main():
                             if (r, c) != start:
                                 intermediate = (start, (r, c))
                                 CONSTRAINTS.append(intermediate)
-    
+
     # Domains are the numbers that could fill each cell
     # Some domains are empty to show the cell is already filled with a number
     cellDomains = {}
@@ -225,7 +235,7 @@ def main():
             else:
                 val = puzzle[i][j]
                 cellDomains[(i, j)] = set()
-   
+
     # Set up progress bar
     printProgressBar(0, 10)
 
@@ -237,11 +247,7 @@ def main():
     # Print how long it took
     print("\033[11B")
     print("Took %f s" % ((end - start)))
-    
-    
+
 
 if __name__ == "__main__":
     main()
-
-
-
