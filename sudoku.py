@@ -1,28 +1,30 @@
 import sys
+import os
 import numpy
 import termcolor
 import time
 import math
 from operator import itemgetter
+import pyfiglet
 
 
 def print_board(board, cells, hw):
     """Print the sudoku board"""
     if hw > 9:
-        space = '   '
+        space = '\t'
     else:
         space = ' '
     for j in range(hw):
         for i in range(hw):
             if (j, i) in cells:
                 if board[j][i] > 0:
-                    termcolor.cprint(board[j][i], "blue", end="")
+                    print(termcolor.colored(board[j][i], "blue"), end="")
                     print(space, end="")
                 else:
-                    termcolor.cprint(board[j][i], "red", end="")
+                    print(termcolor.colored(board[j][i], "red"), end="")
                     print(space, end="")
             else:
-                termcolor.cprint(board[j][i], "green", end="")
+                print(termcolor.colored(board[j][i], "green"), end="")
                 print(space, end="")
         if j < hw - 1:
             print()
@@ -41,7 +43,7 @@ def find_neighbors(cell, CONSTRAINTS):
     return neighbors
 
 
-def select_unassigned_variable(assignment, domains, CONSTRAINTS, hw):
+def select_unassigned_variable(domains, hw):
     """Chooses a variable that has the least domains left"""
     for cell in domains:
         for i in range(1, hw + 1):
@@ -149,7 +151,7 @@ def backtrack(assignment, domains, CONSTRAINTS, cells, hw):
         return assignment
 
     # Try a new variable
-    var = select_unassigned_variable(assignment, domains, CONSTRAINTS, hw)
+    var = select_unassigned_variable(domains, hw)
     values = order_domain_values(var, domains, assignment, CONSTRAINTS)
     for val in values:
         new_assignment = assignment.copy()
@@ -240,12 +242,16 @@ def fill_domains(board, hw, cells, CONSTRAINTS):
 
 def main():
 
+    # Print title
+    title = pyfiglet.figlet_format('Sudoku Solver', 'digital')
+    print(title)
+
     # Check for proper usage
     if len(sys.argv) != 2:
         sys.exit("Usage: python sudoku.py puzzle.csv")
 
     # Print loading when board variables are being loaded
-    print("Loading board...")
+    print("Loading board...\n")
 
     # Load data
     puzzle = numpy.genfromtxt(
@@ -261,7 +267,7 @@ def main():
     CONSTRAINTS = find_constraints(puzzle, hw)
     if CONSTRAINTS == TypeError:
         sys.exit("Not valid board. Try 6x6, 9x9, 16x16 etc.")
-
+    
     # Print loading when board variables are being loaded
     print("Solving Sudoku:")
 
@@ -276,7 +282,7 @@ def main():
 
     # Print how long it took
     down = hw - 1
-    print(f"\033[{down}B")
+    print(f"\033[{down+1}B")
     s = round((end - start), 2)
     print(f"Took {s} s")
 
