@@ -4,7 +4,7 @@ I used backtracking search algorithm with some optimization heuristics to solve 
 
 ## Requirements
 
-Numpy, termcolor and pyfiglet.
+Numpy, termcolor and pyfiglet. Run `pip install -r requirements.txt` to install required packages.
 
 ## Usage
 
